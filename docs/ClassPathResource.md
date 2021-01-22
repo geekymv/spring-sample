@@ -112,6 +112,36 @@ public static ClassLoader getDefaultClassLoader() {
 
 首先获取线程上线文类加载器，如果获取失败，则获取加载 ClassUtils 类的类加载器，如果返回null（加载 ClassUtils 类的类加载器是启动类加载器），则获取系统类加载器。
 
+
+
+ClassPathResource 类中实现了 InputStreamSource 接口中的 getInputStream() 方法，
+
+```java
+@Override
+public InputStream getInputStream() throws IOException {
+   InputStream is;
+   if (this.clazz != null) {
+      is = this.clazz.getResourceAsStream(this.path);
+   }
+   else if (this.classLoader != null) {
+      is = this.classLoader.getResourceAsStream(this.path);
+   }
+   else {
+      is = ClassLoader.getSystemResourceAsStream(this.path);
+   }
+   if (is == null) {
+      throw new FileNotFoundException(getDescription() + " cannot be opened because it does not exist");
+   }
+   return is;
+}
+```
+
+
+
+
+
+
+
 至此，ClassPathResource 类的构造方法分析完毕。
 
 
