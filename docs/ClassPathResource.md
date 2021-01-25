@@ -1,3 +1,10 @@
+上一篇文章我们主要介绍了开发 Spring 应用涉及到的一些核心组件，在文章的最后搭建了开发环境。那么接下来我们开始分析 Spring 源码部分，本篇文章首先分析 Spring 是如何封装资源文件的。
+
+
+
+ClassPathResource 类 见名知义就是classpath 下的资源，
+
+
 ```java
 Resource resource = new ClassPathResource("applicationContext.xml");
 ```
@@ -21,9 +28,21 @@ public class ClassPathResource extends AbstractFileResolvingResource {
 }   
 ```
 
-ClassPathResource 类内部 定义了 final 类型的变量path，用于存储构造方法传入的path参数。
+#### 成员变量
+
+ClassPathResource 类内部 定义了三个成员变量：
+
+final 类型的变量path，用于存储构造方法传入的path参数，表示资源路径；
+
+成员变量 classLoader，用于获取资源（调用 ClassLoader 类的 getResourceAsStream(String name)方法）的class对象；
+
+成员变量 clazz，用于获取资源（调用 Class 类的 getResourceAsStream(String name)方法）的class对象；
+
+classLoader 与 clazz 是用来获取资源的两种方式，具体的使用继续看下面关于核心方法 getInputStream() 的分析。
 
 
+
+#### 构造函数
 
 ```java
 public ClassPathResource(String path) {
@@ -57,17 +76,11 @@ public ClassPathResource(String path, @Nullable Class<?> clazz) {
 }
 ```
 
-对比上面两个构造方法的实现，对path 路径
+对比上面两个构造方法的实现，可以发现它们对path 路径的处理方式上存在差异，classLoader 方式去除开头的字符 / ，clazz 则不需要。根本原因还是由于 Class 类中的 getResourceAsStream() 方法 与 ClassLoader 类中的 getResourceAsStream() 对资源路径的处理方式不同，具体可以具体的实现源码，也可以参考这篇文章去实践下https://www.cnblogs.com/yejg1212/p/3270152.html，这里不再扩展。
 
 
 
-Class类中的 getResourceAsStream() 方法 与 ClassLoader 类中的 getResourceAsStream() 关系？
-
-
-
-
-
-ClassPathResource 还提供了三个参数的构造方法，不过已经不推荐使用了。
+ClassPathResource 还提供了三个参数的构造方法，不过在 Spring 的 4.3.13 版本中已经不推荐使用了。
 
 ```java
 @Deprecated
@@ -81,6 +94,8 @@ protected ClassPathResource(String path, @Nullable ClassLoader classLoader, @Nul
 > Deprecated as of 4.3.13, in favor of selective use of ClassPathResource(String, ClassLoader) vs ClassPathResource(String, Class)
 
 
+
+#### 默认类加载器
 
 ClassUtils.getDefaultClassLoader() 使用 Spring 提供的工具类 ClassUtils 获取默认的类加载器。
 
@@ -114,7 +129,9 @@ public static ClassLoader getDefaultClassLoader() {
 
 
 
-ClassPathResource 类中实现了 InputStreamSource 接口中的 getInputStream() 方法，
+#### 核心方法
+
+ClassPathResource 类中实现了 InputStreamSource 接口中的 getInputStream() 方法，这里可以看到成员变量 clazz 和 classLoader 实际用于加载资源的地方。
 
 ```java
 @Override
@@ -136,19 +153,7 @@ public InputStream getInputStream() throws IOException {
 }
 ```
 
-
-
-
-
-
-
-至此，ClassPathResource 类的构造方法分析完毕。
-
-
-
-
-
-
+至此，ClassPathResource 类的功能基本分析完毕。留个问题，ClassPathResource 类的 getInputStream() 方法在什么地方被执行的呢？我们下篇文章见。
 
 
 
