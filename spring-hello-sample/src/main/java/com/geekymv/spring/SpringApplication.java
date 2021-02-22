@@ -1,5 +1,6 @@
 package com.geekymv.spring;
 
+import com.geekymv.spring.domain.Person;
 import com.geekymv.spring.domain.User;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.beans.factory.xml.XmlBeanDefinitionReader;
@@ -14,6 +15,7 @@ public class SpringApplication {
         Resource resource = new ClassPathResource("applicationContext.xml");
         // 声明 Spring bean 工厂
         DefaultListableBeanFactory beanFactory = new DefaultListableBeanFactory();
+//        beanFactory.ignoreDependencyInterface(UserAware.class);
 
         // 定义 BeanDefinitionReader，并指定 BeanFactory
         XmlBeanDefinitionReader reader = new XmlBeanDefinitionReader(beanFactory);
@@ -22,8 +24,14 @@ public class SpringApplication {
         reader.loadBeanDefinitions(resource);
 
         // 获取 BeanFactory 管理的 bean 实例
-        User user = (User) beanFactory.getBean("user");
-        System.out.println(user.getId() + ", " + user.getName());
+//        User user = (User) beanFactory.getBean("user");
+//        System.out.println(user.getId() + ", " + user.getName());
+
+
+        Person person = beanFactory.getBean("person", Person.class);
+
+        System.out.println(person);
+
     }
 
 }
