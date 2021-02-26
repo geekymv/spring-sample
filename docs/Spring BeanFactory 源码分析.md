@@ -82,8 +82,20 @@ public interface UserAware {
 ```
 Person 类中 setUser() 方法的实现
 ```java
-public void setUser(User user) {
-    this.user = user;
+import com.geekymv.spring.UserAware;
+
+public class Person implements UserAware {
+
+    private User user;
+
+    @Override
+    public void setUser(User user) {
+        this.user = user;
+    }
+
+    public User getUser() {
+        return user;
+    }
 }
 ```
 如果我们调用了 beanFactory.ignoreDependencyInterface(UserAware.class); 方法忽略 UserAware 接口，
