@@ -1,15 +1,17 @@
 上一篇文章我们主要介绍了开发 Spring 应用涉及到的一些核心组件，在文章的最后搭建了开发环境。那么接下来我们开始分析 Spring 源码部分，本篇文章首先分析 Spring 是如何封装资源文件的。
 
+Spring 框架内部使用 Resource 接口作为所有资源的抽象和访问接口，在上一篇文章的示例代码中的配置文件是通过ClassPathResource 进行封装的，ClassPathResource 是 Resource 的一个特定类型的实现，代表的是位于 classpath 中的资源。
 
+对不同来源的资源文件 Spring 都提供了相应的实现：文件（FileSystemResource ）、ClassPath资源（ClassPathResource）、URL资源（UrlResource）、InputStream资源（InputStreamResource）、ByteArray资源（ByteArrayResource）等。
 
-ClassPathResource 类 见名知义就是classpath 下的资源，
+接下来我们重点关注 ClassPathResource 完成的功能。
 
 
 ```java
 Resource resource = new ClassPathResource("applicationContext.xml");
 ```
 
-调用 ClassPathResource 类的构造方法，ClassPathResource  内部帮我们做了很多繁琐的工作。首先看下 ClassPathResource  类的继承关系：
+通过调用 ClassPathResource 类的构造方法，实现对资源的封装，ClassPathResource  内部帮我们做了很多繁琐的工作。首先看下 ClassPathResource  类的继承关系：
 
 ![ClassPathResource](ClassPathResource.assets/ClassPathResource.png)
 
@@ -30,15 +32,15 @@ public class ClassPathResource extends AbstractFileResolvingResource {
 
 #### 成员变量
 
-ClassPathResource 类内部 定义了三个成员变量：
+ClassPathResource 类内部定义了三个成员变量：
 
-final 类型的变量path，用于存储构造方法传入的path参数，表示资源路径；
+1、final 类型的变量path，用于存储构造方法传入的path参数，表示资源路径；
 
-成员变量 classLoader，用于获取资源（调用 ClassLoader 类的 getResourceAsStream(String name)方法）的class对象；
+2、成员变量 classLoader，用于获取资源（调用 ClassLoader 类的 getResourceAsStream(String name)方法）的 classLoader 对象；
 
-成员变量 clazz，用于获取资源（调用 Class 类的 getResourceAsStream(String name)方法）的class对象；
+3、成员变量 clazz，用于获取资源（调用 Class 类的 getResourceAsStream(String name)方法）的class对象；
 
-classLoader 与 clazz 是用来获取资源的两种方式，具体的使用继续看下面关于核心方法 getInputStream() 的分析。
+ClassPathResource 类就是通过 classLoader 或 clazz 提供的底层方法来获取资源的，具体的使用继续看下面关于核心方法 getInputStream() 的分析。
 
 
 
