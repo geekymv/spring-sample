@@ -1,7 +1,6 @@
 Spring加载BeanDefinition过程详解（一）
 
-https://www.cnblogs.com/VergiLyn/p/6130188.html
-
+今天我们继续Spring源码的学习，上一篇文章分析了 BeanDefinitionReader 的创建过程，本篇文章分析 BeanDefinitionReader 加载BeanDefinition过程。
 ```java
 /**
  * Load bean definitions from the specified XML file.
@@ -159,7 +158,10 @@ Set<EncodedResource> currentResources = this.resourcesCurrentlyBeingLoaded.get()
 
 resourcesCurrentlyBeingLoaded 成员变量是ThreadLocal的子类NamedThreadLocal，内部通过 HashSet 判断资源文件的循环加载。（考点，HashSet 底层是 HashMap实现的，EncodedResource 内部重写了equals 和 hashCode 方法）。使用ThreadLocal最后一定要remove，避免内存泄漏（https://zhuanlan.zhihu.com/p/354153342）。
 
-InputStream inputStream = encodedResource.getResource().getInputStream(); 这样代码解释了xxx最后留下的问题，ClassPathResource 类的 getInputStream() 方法在什么地方被执行的呢？
+```java
+InputStream inputStream = encodedResource.getResource().getInputStream(); 
+```
+这行代码解释了xxx最后留下的问题，ClassPathResource 类的 getInputStream() 方法在什么地方被执行的呢？
 
 
 
@@ -239,7 +241,7 @@ protected BeanDefinitionDocumentReader createBeanDefinitionDocumentReader() {
 getRegistry().getBeanDefinitionCount();
 ```
 
-BeanDefinitionRegistry 的实现类 DefaultListableBeanFactory 中 Map<String, BeanDefinition> beanDefinitionMap 中获取BeanDefinition的个数。
+BeanDefinitionRegistry 的实现类 DefaultListableBeanFactory 中的成员变量 Map<String, BeanDefinition> beanDefinitionMap 中获取BeanDefinition的个数。
 
 九转十八弯，流程最后转入BeanDefinitionDocumentReader 接口的实现类DefaultBeanDefinitionDocumentReader 中。
 
@@ -257,8 +259,7 @@ public void registerBeanDefinitions(Document doc, XmlReaderContext readerContext
 }
 ```
 
-
-
+BeanDefinitionDocumentReader 内部实现我们下篇再分析，敬请期待。
 
 
 
