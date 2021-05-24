@@ -1,6 +1,8 @@
 Spring加载BeanDefinition过程详解（二）
 
-BeanDefinitionDocumentReader 实现类 DefaultBeanDefinitionDocumentReader
+BeanDefinitionDocumentReader 的实现类 DefaultBeanDefinitionDocumentReader
+
+上一篇文章我们分析到 DefaultBeanDefinitionDocumentReader 注册 BeanDefinition 信息。
 ```java
 /**
  * This implementation parses bean definitions according to the "spring-beans" XSD
@@ -123,7 +125,7 @@ private void parseDefaultElement(Element ele, BeanDefinitionParserDelegate deleg
 }
 ```
 
-下面看下对bean标签的处理过程
+下面先看下对bean标签的处理过程
 ```java
 /**
  * Process the given bean element, parsing the bean definition
@@ -150,8 +152,125 @@ protected void processBeanDefinition(Element ele, BeanDefinitionParserDelegate d
 
 接下来，我们重点看下 BeanDefinitionHolder 对象的封装过程。
 
-进入 BeanDefinitionParserDelegate  类的
+进入 BeanDefinitionParserDelegate  类的 parseBeanDefinitionElement 方法
 
+```java
+**
+ * Parses the supplied {@code <bean>} element. May return {@code null}
+ * if there were errors during parse. Errors are reported to the
+ * {@link org.springframework.beans.factory.parsing.ProblemReporter}.
+ */
+public BeanDefinitionHolder parseBeanDefinitionElement(Element ele) {
+    return parseBeanDefinitionElement(ele, null);
+}
+```
+
+
+对照 applicationContext.xml 配置文件中的<bean>
+
+```xml
+<bean id="user" class="com.geekymv.spring.domain.User">
+    <property name="id" value="1" />
+    <property name="name" value="tom" />
+</bean>
+```
+
+```java
+/**
+ * Parses the supplied {@code <bean>} element. May return {@code null}
+ * if there were errors during parse. Errors are reported to the
+ * {@link org.springframework.beans.factory.parsing.ProblemReporter}.
+ */
+@Nullable
+public BeanDefinitionHolder parseBeanDefinitionElement(Element ele, @Nullable BeanDefinition containingBean) {
+    // 获取id属性
+    String id = ele.getAttribute(ID_ATTRIBUTE);
+    // 获取name属性，这里我们并没有配置name属性
+    String nameAttr = ele.getAttribute(NAME_ATTRIBUTE);
+
+    List<String> aliases = new ArrayList<>();
+    if (StringUtils.hasLength(nameAttr)) {
+        // 如果配置了name属性，则将name属性按照,;拆分，添加到 aliases 列表中
+        String[] nameArr = StringUtils.tokenizeToStringArray(nameAttr, MULTI_VALUE_ATTRIBUTE_DELIMITERS);
+        aliases.addAll(Arrays.asList(nameArr));
+    }
+    // 我们常说的beanName就是配置中的id属性
+    String beanName = id;
+    if (!StringUtils.hasText(beanName) && !aliases.isEmpty()) {
+        // 如果没有配置id属性，则使用name属性的第一个值
+        beanName = aliases.remove(0); // 删除并返回
+        if (logger.isTraceEnabled()) {
+            logger.trace("No XML 'id' specified - using '" + beanName +
+                    "' as bean name and " + aliases + " as aliases");
+        }
+    }
+
+    if (containingBean == null) {
+        // 检查beanName的值是否已经存在
+        checkNameUniqueness(beanName, aliases, ele);
+    }
+
+    AbstractBeanDefinition beanDefinition = parseBeanDefinitionElement(ele, beanName, containingBean);
+    if (beanDefinition != null) {
+        if (!StringUtils.hasText(beanName)) {
+            try {
+                if (containingBean != null) {
+                    beanName = BeanDefinitionReaderUtils.generateBeanName(
+                            beanDefinition, this.readerContext.getRegistry(), true);
+                }
+                else {
+                    beanName = this.readerContext.generateBeanName(beanDefinition);
+                    // Register an alias for the plain bean class name, if still possible,
+                    // if the generator returned the class name plus a suffix.
+                    // This is expected for Spring 1.2/2.0 backwards compatibility.
+                    String beanClassName = beanDefinition.getBeanClassName();
+                    if (beanClassName != null &&
+                            beanName.startsWith(beanClassName) && beanName.length() > beanClassName.length() &&
+                            !this.readerContext.getRegistry().isBeanNameInUse(beanClassName)) {
+                        aliases.add(beanClassName);
+                    }
+                }
+                if (logger.isTraceEnabled()) {
+                    logger.trace("Neither XML 'id' nor 'name' specified - " +
+                            "using generated bean name [" + beanName + "]");
+                }
+            }
+            catch (Exception ex) {
+                error(ex.getMessage(), ele);
+                return null;
+            }
+        }
+        String[] aliasesArray = StringUtils.toStringArray(aliases);
+        // 封装成 BeanDefinitionHolder
+        return new BeanDefinitionHolder(beanDefinition, beanName, aliasesArray);
+    }
+
+    return null;
+}
+```
+
+```java
+/**
+ * Validate that the specified bean name and aliases have not been used already
+ * within the current level of beans element nesting.
+ */
+protected void checkNameUniqueness(String beanName, List<String> aliases, Element beanElement) {
+    String foundName = null;
+
+    if (StringUtils.hasText(beanName) && this.usedNames.contains(beanName)) {
+        foundName = beanName;
+    }
+    if (foundName == null) {
+        foundName = CollectionUtils.findFirstMatch(this.usedNames, aliases);
+    }
+    if (foundName != null) {
+        error("Bean name '" + foundName + "' is already used in this <beans> element", beanElement);
+    }
+
+    this.usedNames.add(beanName);
+    this.usedNames.addAll(aliases);
+}
+```
 
 
 
