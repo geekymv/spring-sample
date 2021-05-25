@@ -135,6 +135,7 @@ protected void processBeanDefinition(Element ele, BeanDefinitionParserDelegate d
     // 解析结果封装成BeanDefinitionHolder对象
     BeanDefinitionHolder bdHolder = delegate.parseBeanDefinitionElement(ele);
     if (bdHolder != null) {
+        // BeanDefinition 终于创建出来了
         bdHolder = delegate.decorateBeanDefinitionIfRequired(ele, bdHolder);
         try {
             // Register the final decorated instance.
@@ -206,13 +207,16 @@ public BeanDefinitionHolder parseBeanDefinitionElement(Element ele, @Nullable Be
     }
 
     if (containingBean == null) {
-        // 检查beanName的值是否已经存在
+        // 校验id、name 是否重复
         checkNameUniqueness(beanName, aliases, ele);
     }
-
+    
+    // 封装成 AbstractBeanDefinition
     AbstractBeanDefinition beanDefinition = parseBeanDefinitionElement(ele, beanName, containingBean);
+    
     if (beanDefinition != null) {
         if (!StringUtils.hasText(beanName)) {
+            // 处理beanName没有值的情况
             try {
                 if (containingBean != null) {
                     beanName = BeanDefinitionReaderUtils.generateBeanName(
@@ -240,8 +244,8 @@ public BeanDefinitionHolder parseBeanDefinitionElement(Element ele, @Nullable Be
                 return null;
             }
         }
+        // 将 GenericBeanDefinition 封装成 BeanDefinitionHolder
         String[] aliasesArray = StringUtils.toStringArray(aliases);
-        // 封装成 BeanDefinitionHolder
         return new BeanDefinitionHolder(beanDefinition, beanName, aliasesArray);
     }
 
@@ -273,7 +277,132 @@ protected void checkNameUniqueness(String beanName, List<String> aliases, Elemen
 ```
 
 
+```java
+/**
+ * Parse the bean definition itself, without regard to name or aliases. May return
+ * {@code null} if problems occurred during the parsing of the bean definition.
+ */
+public AbstractBeanDefinition parseBeanDefinitionElement(
+        Element ele, String beanName, BeanDefinition containingBean) {
 
+    this.parseState.push(new BeanEntry(beanName));
+
+    String className = null;
+    if (ele.hasAttribute(CLASS_ATTRIBUTE)) {
+        // 解析class属性值
+        className = ele.getAttribute(CLASS_ATTRIBUTE).trim();
+    }
+
+    try {
+        String parent = null;
+        if (ele.hasAttribute(PARENT_ATTRIBUTE)) {
+            parent = ele.getAttribute(PARENT_ATTRIBUTE);
+        }
+        // 创建 BeanDefinition
+        AbstractBeanDefinition bd = createBeanDefinition(className, parent);
+        
+        // 解析<bean> 标签的其他属性（比如：scope、abstract、lazy-init、init-method 等）
+        parseBeanDefinitionAttributes(ele, beanName, containingBean, bd);
+        bd.setDescription(DomUtils.getChildElementValueByTagName(ele, DESCRIPTION_ELEMENT));
+
+        parseMetaElements(ele, bd);
+        parseLookupOverrideSubElements(ele, bd.getMethodOverrides());
+        parseReplacedMethodSubElements(ele, bd.getMethodOverrides());
+
+        parseConstructorArgElements(ele, bd);
+        parsePropertyElements(ele, bd);
+        parseQualifierElements(ele, bd);
+
+        bd.setResource(this.readerContext.getResource());
+        bd.setSource(extractSource(ele));
+
+        return bd;
+    }
+    catch (ClassNotFoundException ex) {
+        error("Bean class [" + className + "] not found", ele, ex);
+    }
+    catch (NoClassDefFoundError err) {
+        error("Class that bean class [" + className + "] depends on not found", ele, err);
+    }
+    catch (Throwable ex) {
+        error("Unexpected failure during bean definition parsing", ele, ex);
+    }
+    finally {
+        this.parseState.pop();
+    }
+
+    return null;
+}
+```
+
+```java
+/**
+ * Create a bean definition for the given class name and parent name.
+ * @param className the name of the bean class
+ * @param parentName the name of the bean's parent bean
+ * @return the newly created bean definition
+ * @throws ClassNotFoundException if bean class resolution was attempted but failed
+ */
+protected AbstractBeanDefinition createBeanDefinition(String className, String parentName)
+        throws ClassNotFoundException {
+
+    return BeanDefinitionReaderUtils.createBeanDefinition(
+            parentName, className, this.readerContext.getBeanClassLoader());
+}
+```
+BeanDefinitionReaderUtils 工具类的 createBeanDefinition 方法
+
+```java
+/**
+ * Create a new GenericBeanDefinition for the given parent name and class name,
+ * eagerly loading the bean class if a ClassLoader has been specified.
+ * @param parentName the name of the parent bean, if any
+ * @param className the name of the bean class, if any
+ * @param classLoader the ClassLoader to use for loading bean classes
+ * (can be {@code null} to just register bean classes by name)
+ * @return the bean definition
+ * @throws ClassNotFoundException if the bean class could not be loaded
+ */
+public static AbstractBeanDefinition createBeanDefinition(
+        String parentName, String className, ClassLoader classLoader) throws ClassNotFoundException {
+
+    GenericBeanDefinition bd = new GenericBeanDefinition();
+    bd.setParentName(parentName);
+    if (className != null) {
+        // 默认情况下 classLoader = null，AbstractBeanDefinitionReader 类中的 setBeanClassLoader 方法
+        if (classLoader != null) {
+            bd.setBeanClass(ClassUtils.forName(className, classLoader));
+        }
+        else {
+            bd.setBeanClassName(className);
+        }
+    }
+    return bd;
+}
+```
+这里有个地方需要特别注意：
+GenericBeanDefinition 类中的setBeanClass 和 setBeanClassName 都是将值赋值给 beanClass 成员变量，
+说明 beanClass 成员变量既可以存储类的class对象，也可以存储类的全路径名，比如 com.geekymv.spring.domain.User。
+```java
+
+private volatile Object beanClass;
+
+/**
+ * Specify the bean class name of this bean definition.
+ */
+@Override
+public void setBeanClassName(String beanClassName) {
+    this.beanClass = beanClassName;
+}
+
+/**
+ * Specify the bean class name of this bean definition.
+ */
+@Override
+public void setBeanClassName(String beanClassName) {
+    this.beanClass = beanClassName;
+}
+```
 
 
 
