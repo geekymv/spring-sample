@@ -92,6 +92,7 @@ protected void parseBeanDefinitions(Element root, BeanDefinitionParserDelegate d
                     parseDefaultElement(ele, delegate);
                 }
                 else {
+                    // 解析自定义元素，比如dubbo xml 的配置
                     delegate.parseCustomElement(ele);
                 }
             }
