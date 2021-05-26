@@ -509,7 +509,7 @@ public void registerBeanDefinition(String beanName, BeanDefinition beanDefinitio
     }
     else {
         // beanDefinitionMap 中不存在这个beanName
-        if (hasBeanCreationStarted()) {
+        if (hasBeanCreationStarted()) { // 判断是否在bean的创建阶段
             // Cannot modify startup-time collection elements anymore (for stable iteration)
             synchronized (this.beanDefinitionMap) {
                 this.beanDefinitionMap.put(beanName, beanDefinition);
@@ -525,7 +525,7 @@ public void registerBeanDefinition(String beanName, BeanDefinition beanDefinitio
             }
         }
         else {
-            // 核心代码，将 BeanDefinition 放入 beanDefinitionMap 中
+            // bean注册阶段的核心代码，将 BeanDefinition 放入 beanDefinitionMap 中
             // Still in startup registration phase
             this.beanDefinitionMap.put(beanName, beanDefinition);
             // beanName 放入 beanDefinitionNames 列表中
