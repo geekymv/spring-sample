@@ -483,28 +483,7 @@ public void registerBeanDefinition(String beanName, BeanDefinition beanDefinitio
                     "Cannot register bean definition [" + beanDefinition + "] for bean '" + beanName +
                     "': There is already [" + existingDefinition + "] bound.");
         }
-        else if (existingDefinition.getRole() < beanDefinition.getRole()) {
-            // e.g. was ROLE_APPLICATION, now overriding with ROLE_SUPPORT or ROLE_INFRASTRUCTURE
-            if (logger.isWarnEnabled()) {
-                logger.warn("Overriding user-defined bean definition for bean '" + beanName +
-                        "' with a framework-generated bean definition: replacing [" +
-                        existingDefinition + "] with [" + beanDefinition + "]");
-            }
-        }
-        else if (!beanDefinition.equals(existingDefinition)) {
-            if (logger.isInfoEnabled()) {
-                logger.info("Overriding bean definition for bean '" + beanName +
-                        "' with a different definition: replacing [" + existingDefinition +
-                        "] with [" + beanDefinition + "]");
-            }
-        }
-        else {
-            if (logger.isDebugEnabled()) {
-                logger.debug("Overriding bean definition for bean '" + beanName +
-                        "' with an equivalent definition: replacing [" + existingDefinition +
-                        "] with [" + beanDefinition + "]");
-            }
-        }
+        // 省略部分代码...
         this.beanDefinitionMap.put(beanName, beanDefinition);
     }
     else {
