@@ -508,7 +508,7 @@ public void registerBeanDefinition(String beanName, BeanDefinition beanDefinitio
         this.beanDefinitionMap.put(beanName, beanDefinition);
     }
     else {
-        // beanDefinitionMap 不存在这个beanName
+        // beanDefinitionMap 中不存在这个beanName
         if (hasBeanCreationStarted()) {
             // Cannot modify startup-time collection elements anymore (for stable iteration)
             synchronized (this.beanDefinitionMap) {
