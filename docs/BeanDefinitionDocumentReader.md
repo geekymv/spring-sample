@@ -104,7 +104,7 @@ protected void parseBeanDefinitions(Element root, BeanDefinitionParserDelegate d
 }
 ```
 
-解析默认标签
+这里我们先重点关注下默认标签解析，关于自定义标签的解析后续文章再分析
 ```java
 private void parseDefaultElement(Element ele, BeanDefinitionParserDelegate delegate) {
     if (delegate.nodeNameEquals(ele, IMPORT_ELEMENT)) {
@@ -135,8 +135,9 @@ private void parseDefaultElement(Element ele, BeanDefinitionParserDelegate deleg
 protected void processBeanDefinition(Element ele, BeanDefinitionParserDelegate delegate) {
     // 解析结果封装成BeanDefinitionHolder对象
     BeanDefinitionHolder bdHolder = delegate.parseBeanDefinitionElement(ele);
+    // BeanDefinition 终于创建出来了
     if (bdHolder != null) {
-        // BeanDefinition 终于创建出来了
+        // 解析自定义属性
         bdHolder = delegate.decorateBeanDefinitionIfRequired(ele, bdHolder);
         try {
             // Register the final decorated instance.
@@ -245,7 +246,7 @@ public BeanDefinitionHolder parseBeanDefinitionElement(Element ele, @Nullable Be
                 return null;
             }
         }
-        // 将 GenericBeanDefinition 封装成 BeanDefinitionHolder
+        // 将 GenericBeanDefinition 封装成 BeanDefinitionHolder，返回。
         String[] aliasesArray = StringUtils.toStringArray(aliases);
         return new BeanDefinitionHolder(beanDefinition, beanName, aliasesArray);
     }
@@ -311,6 +312,7 @@ public AbstractBeanDefinition parseBeanDefinitionElement(
         parseReplacedMethodSubElements(ele, bd.getMethodOverrides());
 
         parseConstructorArgElements(ele, bd);
+        // 解析property子元素
         parsePropertyElements(ele, bd);
         parseQualifierElements(ele, bd);
 
@@ -370,7 +372,7 @@ public static AbstractBeanDefinition createBeanDefinition(
     GenericBeanDefinition bd = new GenericBeanDefinition();
     bd.setParentName(parentName);
     if (className != null) {
-        // 默认情况下 classLoader = null，AbstractBeanDefinitionReader 类中的 setBeanClassLoader 方法
+        // 默认情况下 classLoader = null（AbstractBeanDefinitionReader 类中的 setBeanClassLoader 方法）
         if (classLoader != null) {
             bd.setBeanClass(ClassUtils.forName(className, classLoader));
         }
@@ -405,11 +407,146 @@ public void setBeanClassName(String beanClassName) {
 }
 ```
 
+至此，我们已将创建了BeanDefinition，并将 BeanDefinition 封装成 BeanDefinitionHolder。
 
 
+接下来，我们看看 BeanDefinitionReaderUtils 如何将BeanDefinition 注册到BeanFactory。
+```java
+// Register the final decorated instance.
+BeanDefinitionReaderUtils.registerBeanDefinition(bdHolder, getReaderContext().getRegistry());
+```
+这里的 BeanDefinitionRegistry registry 实际上是 DefaultListableBeanFactory 实例。
+```java
+/**
+ * Register the given bean definition with the given bean factory.
+ * @param definitionHolder the bean definition including name and aliases
+ * @param registry the bean factory to register with
+ * @throws BeanDefinitionStoreException if registration failed
+ */
+public static void registerBeanDefinition(
+        BeanDefinitionHolder definitionHolder, BeanDefinitionRegistry registry)
+        throws BeanDefinitionStoreException {
 
+    // Register bean definition under primary name.
+    String beanName = definitionHolder.getBeanName();
+    // 将BeanDefinition 注册到 registry
+    registry.registerBeanDefinition(beanName, definitionHolder.getBeanDefinition());
 
+    // Register aliases for bean name, if any.
+    String[] aliases = definitionHolder.getAliases();
+    if (aliases != null) {
+        for (String alias : aliases) {
+            registry.registerAlias(beanName, alias);
+        }
+    }
+}
+```
+下面我们进入 DefaultListableBeanFactory 类
 
+```java
+// DefaultListableBeanFactory 类中的成员变量
+/** Map of bean definition objects, keyed by bean name */
+private final Map<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<String, BeanDefinition>(256);
 
+/** List of bean definition names, in registration order */
+private volatile List<String> beanDefinitionNames = new ArrayList<String>(256);
 
+/** List of names of manually registered singletons, in registration order */
+private volatile Set<String> manualSingletonNames = new LinkedHashSet<String>(16);
+
+//---------------------------------------------------------------------
+// Implementation of BeanDefinitionRegistry interface
+//---------------------------------------------------------------------
+
+@Override
+public void registerBeanDefinition(String beanName, BeanDefinition beanDefinition)
+        throws BeanDefinitionStoreException {
+
+    Assert.hasText(beanName, "Bean name must not be empty");
+    Assert.notNull(beanDefinition, "BeanDefinition must not be null");
+
+    if (beanDefinition instanceof AbstractBeanDefinition) {
+        try {
+            ((AbstractBeanDefinition) beanDefinition).validate();
+        }
+        catch (BeanDefinitionValidationException ex) {
+            throw new BeanDefinitionStoreException(beanDefinition.getResourceDescription(), beanName,
+                    "Validation of bean definition failed", ex);
+        }
+    }
+    
+    // 根据 beanName 从 beanDefinitionMap 中获取 BeanDefinition
+    BeanDefinition existingDefinition = this.beanDefinitionMap.get(beanName);
+    if (existingDefinition != null) {
+        if (!isAllowBeanDefinitionOverriding()) {
+            throw new BeanDefinitionStoreException(beanDefinition.getResourceDescription(), beanName,
+                    "Cannot register bean definition [" + beanDefinition + "] for bean '" + beanName +
+                    "': There is already [" + existingDefinition + "] bound.");
+        }
+        else if (existingDefinition.getRole() < beanDefinition.getRole()) {
+            // e.g. was ROLE_APPLICATION, now overriding with ROLE_SUPPORT or ROLE_INFRASTRUCTURE
+            if (logger.isWarnEnabled()) {
+                logger.warn("Overriding user-defined bean definition for bean '" + beanName +
+                        "' with a framework-generated bean definition: replacing [" +
+                        existingDefinition + "] with [" + beanDefinition + "]");
+            }
+        }
+        else if (!beanDefinition.equals(existingDefinition)) {
+            if (logger.isInfoEnabled()) {
+                logger.info("Overriding bean definition for bean '" + beanName +
+                        "' with a different definition: replacing [" + existingDefinition +
+                        "] with [" + beanDefinition + "]");
+            }
+        }
+        else {
+            if (logger.isDebugEnabled()) {
+                logger.debug("Overriding bean definition for bean '" + beanName +
+                        "' with an equivalent definition: replacing [" + existingDefinition +
+                        "] with [" + beanDefinition + "]");
+            }
+        }
+        this.beanDefinitionMap.put(beanName, beanDefinition);
+    }
+    else {
+        // beanDefinitionMap 不存在这个beanName
+        if (hasBeanCreationStarted()) {
+            // Cannot modify startup-time collection elements anymore (for stable iteration)
+            synchronized (this.beanDefinitionMap) {
+                this.beanDefinitionMap.put(beanName, beanDefinition);
+                List<String> updatedDefinitions = new ArrayList<String>(this.beanDefinitionNames.size() + 1);
+                updatedDefinitions.addAll(this.beanDefinitionNames);
+                updatedDefinitions.add(beanName);
+                this.beanDefinitionNames = updatedDefinitions;
+                if (this.manualSingletonNames.contains(beanName)) {
+                    Set<String> updatedSingletons = new LinkedHashSet<String>(this.manualSingletonNames);
+                    updatedSingletons.remove(beanName);
+                    this.manualSingletonNames = updatedSingletons;
+                }
+            }
+        }
+        else {
+            // 核心代码，将 BeanDefinition 放入 beanDefinitionMap 中
+            // Still in startup registration phase
+            this.beanDefinitionMap.put(beanName, beanDefinition);
+            // beanName 放入 beanDefinitionNames 列表中
+            this.beanDefinitionNames.add(beanName);
+            // 将beanName 从manualSingletonNames 中移除
+            this.manualSingletonNames.remove(beanName);
+        }
+        this.frozenBeanDefinitionNames = null;
+    }
+
+    if (existingDefinition != null || containsSingleton(beanName)) {
+        resetBeanDefinition(beanName);
+    }
+}
+```
+
+现在 BeanDefinition 信息已经放入 DefaultListableBeanFactory 类中成员变量 Map<String, BeanDefinition> beanDefinitionMap 中了。
+```java
+// 执行配置文件的解析，bean 信息装配等
+reader.loadBeanDefinitions(resource);
+```
+加载BeanDefinition信息部分已经完成了，整个过程就是将applicationContext.xml中定义的bean信息封装成BeanDefinition，然后放入BeanFactory中。
+bean的实例并没有初始化。
 
