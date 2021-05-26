@@ -548,5 +548,5 @@ public void registerBeanDefinition(String beanName, BeanDefinition beanDefinitio
 reader.loadBeanDefinitions(resource);
 ```
 加载BeanDefinition信息部分已经完成了，整个过程就是将applicationContext.xml中定义的bean信息封装成BeanDefinition，然后放入BeanFactory中。
-bean的实例并没有初始化。
+bean的并没有实例化。
 
