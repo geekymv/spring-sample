@@ -1,7 +1,5 @@
 Spring加载BeanDefinition过程详解（二）
 
-BeanDefinitionDocumentReader 的实现类 DefaultBeanDefinitionDocumentReader
-
 上一篇文章我们分析到 DefaultBeanDefinitionDocumentReader 注册 BeanDefinition 信息。
 ```java
 /**
@@ -18,7 +16,11 @@ public void registerBeanDefinitions(Document doc, XmlReaderContext readerContext
 }
 ```
 
-继续调用内部方法 doRegisterBeanDefinitions
+分析源码的过程就是在各个类之间跳来跳去，为了便于理解，我画了一张图，大家可以对照着图来跟踪调试源码。
+
+
+
+继续调用DefaultBeanDefinitionDocumentReader类内部方法 doRegisterBeanDefinitions
 ```java
 /**
  * Register each bean definition within the given root {@code <beans/>} element.
@@ -527,5 +529,7 @@ public void registerBeanDefinition(String beanName, BeanDefinition beanDefinitio
 reader.loadBeanDefinitions(resource);
 ```
 经过漫长而复杂的过程，加载BeanDefinition信息部分已经完成了。
-整个过程就是将applicationContext.xml中定义的bean信息封装成BeanDefinition，然后放入BeanFactory中。bean的并没有实例化。
+整个过程就是将applicationContext.xml中定义的bean信息封装成BeanDefinition，然后放入BeanFactory中，完成了bean加载和注册过程，而bean还没有实例化。
+那么 bean 是在什么时候实例化的呢？我们下篇文章分析，敬请期待。
+
 
