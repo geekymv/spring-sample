@@ -30,6 +30,7 @@ protected <T> T doGetBean(
     Object bean;
 
     // Eagerly check singleton cache for manually registered singletons.
+    // 从单例缓存（DefaultSingletonBeanRegistry的singletonObjects中）查找bean实例，第一次是获取不到的
     Object sharedInstance = getSingleton(beanName);
     if (sharedInstance != null && args == null) {
         if (logger.isDebugEnabled()) {
@@ -71,7 +72,7 @@ protected <T> T doGetBean(
         }
 
         try {
-            // 从DefaultListableBeanFactory中获取BeanDefinition
+            // 从DefaultListableBeanFactory中获取BeanDefinition（见下面具体代码分析）
             final RootBeanDefinition mbd = getMergedLocalBeanDefinition(beanName);
             checkMergedBeanDefinition(mbd, beanName, args);
 
@@ -96,7 +97,7 @@ protected <T> T doGetBean(
 
             // Create bean instance.
             if (mbd.isSingleton()) {
-                // 创建单例bean
+                // 创建单例bean，默认是singleton（见下面具体代码分析）
                 sharedInstance = getSingleton(beanName, new ObjectFactory<Object>() {
                     @Override
                     public Object getObject() throws BeansException {
@@ -141,6 +142,7 @@ protected <T> T doGetBean(
                         public Object getObject() throws BeansException {
                             beforePrototypeCreation(beanName);
                             try {
+                                // 调用实现类AbstractAutowireCapableBeanFactory中的createBean方法创建bean实例（见下面具体代码分析）
                                 return createBean(beanName, mbd, args);
                             }
                             finally {
@@ -181,6 +183,113 @@ protected <T> T doGetBean(
 }
 
 ```
+
+从 DefaultListableBeanFactory 中获取 BeanDefinition
+```java
+/**
+ * Return a merged RootBeanDefinition, traversing the parent bean definition
+ * if the specified bean corresponds to a child bean definition.
+ * @param beanName the name of the bean to retrieve the merged definition for
+ * @return a (potentially merged) RootBeanDefinition for the given bean
+ * @throws NoSuchBeanDefinitionException if there is no bean with the given name
+ * @throws BeanDefinitionStoreException in case of an invalid bean definition
+ */
+protected RootBeanDefinition getMergedLocalBeanDefinition(String beanName) throws BeansException {
+    // Quick check on the concurrent map first, with minimal locking.
+    RootBeanDefinition mbd = this.mergedBeanDefinitions.get(beanName);
+    if (mbd != null) {
+        return mbd;
+    }
+    return getMergedBeanDefinition(beanName, getBeanDefinition(beanName));
+}
+```
+
+AbstractBeanFactory 抽象类中的 getBeanDefinition 抽象方法，由子类 DefaultListableBeanFactory 实现，从beanDefinitionMap 中获取BeanDefinition。
+（beanDefinitionMap 中BeanDefinition的是在Bean注册阶段存入的）
+```java
+@Override
+public BeanDefinition getBeanDefinition(String beanName) throws NoSuchBeanDefinitionException {
+    BeanDefinition bd = this.beanDefinitionMap.get(beanName);
+    if (bd == null) {
+        if (logger.isTraceEnabled()) {
+            logger.trace("No bean named '" + beanName + "' found in " + this);
+        }
+        throw new NoSuchBeanDefinitionException(beanName);
+    }
+    return bd;
+}
+```
+getMergedBeanDefinition 方法会将 BeanDefinition 的scope 默认设置成singleton（RootBeanDefinition.SCOPE_SINGLETON）。
+
+
+DefaultSingletonBeanRegistry 中的 getSingleton 方法
+```java
+/**
+ * Return the (raw) singleton object registered under the given name,
+ * creating and registering a new one if none registered yet.
+ * @param beanName the name of the bean
+ * @param singletonFactory the ObjectFactory to lazily create the singleton
+ * with, if necessary
+ * @return the registered singleton object
+ */
+public Object getSingleton(String beanName, ObjectFactory<?> singletonFactory) {
+    Assert.notNull(beanName, "'beanName' must not be null");
+    synchronized (this.singletonObjects) {
+        // 从缓存singletonObjects中获取bean实例
+        Object singletonObject = this.singletonObjects.get(beanName);
+        if (singletonObject == null) {
+            if (this.singletonsCurrentlyInDestruction) {
+                throw new BeanCreationNotAllowedException(beanName,
+                        "Singleton bean creation not allowed while singletons of this factory are in destruction " +
+                        "(Do not request a bean from a BeanFactory in a destroy method implementation!)");
+            }
+            if (logger.isDebugEnabled()) {
+                logger.debug("Creating shared instance of singleton bean '" + beanName + "'");
+            }
+            beforeSingletonCreation(beanName);
+            boolean newSingleton = false;
+            boolean recordSuppressedExceptions = (this.suppressedExceptions == null);
+            if (recordSuppressedExceptions) {
+                this.suppressedExceptions = new LinkedHashSet<Exception>();
+            }
+            try {
+                // 调用对象工厂ObjectFactory创建bean实例
+                singletonObject = singletonFactory.getObject();
+                newSingleton = true;
+            }
+            catch (IllegalStateException ex) {
+                // Has the singleton object implicitly appeared in the meantime ->
+                // if yes, proceed with it since the exception indicates that state.
+                singletonObject = this.singletonObjects.get(beanName);
+                if (singletonObject == null) {
+                    throw ex;
+                }
+            }
+            catch (BeanCreationException ex) {
+                if (recordSuppressedExceptions) {
+                    for (Exception suppressedException : this.suppressedExceptions) {
+                        ex.addRelatedCause(suppressedException);
+                    }
+                }
+                throw ex;
+            }
+            finally {
+                if (recordSuppressedExceptions) {
+                    this.suppressedExceptions = null;
+                }
+                afterSingletonCreation(beanName);
+            }
+            if (newSingleton) {
+                // 单例bean实例创建成功，添加到缓存中
+                addSingleton(beanName, singletonObject);
+            }
+        }
+        return (singletonObject != NULL_OBJECT ? singletonObject : null);
+    }
+}
+```
+
+
 AbstractAutowireCapableBeanFactory 类中的 createBean 方法创建bean实例
 
 ```java
@@ -266,7 +375,7 @@ protected Object doCreateBean(final String beanName, final RootBeanDefinition mb
         instanceWrapper = this.factoryBeanInstanceCache.remove(beanName);
     }
     if (instanceWrapper == null) {
-        // 创建bean实例
+        // 创建bean实例（见下面具体代码分析）
         instanceWrapper = createBeanInstance(beanName, mbd, args);
     }
     // bean实例和对应的class对象
@@ -288,6 +397,7 @@ protected Object doCreateBean(final String beanName, final RootBeanDefinition mb
         }
     }
 
+    // 解决bean循环引用
     // Eagerly cache singletons to be able to resolve circular references
     // even when triggered by lifecycle interfaces like BeanFactoryAware.
     boolean earlySingletonExposure = (mbd.isSingleton() && this.allowCircularReferences &&
@@ -297,7 +407,7 @@ protected Object doCreateBean(final String beanName, final RootBeanDefinition mb
             logger.debug("Eagerly caching bean '" + beanName +
                     "' to allow for resolving potential circular references");
         }
-        // 将bean实例添加到 DefaultSingletonBeanRegistry 中的 singletonObjects 成员变量中
+        // 此时bean实例（未初始化），将beanName添加到 DefaultSingletonBeanRegistry 中的 singletonFactories 、registeredSingletons成员变量中
         addSingletonFactory(beanName, new ObjectFactory<Object>() {
             @Override
             public Object getObject() throws BeansException {
@@ -309,6 +419,7 @@ protected Object doCreateBean(final String beanName, final RootBeanDefinition mb
     // Initialize the bean instance.
     Object exposedObject = bean;
     try {
+        // 初始化bean
         populateBean(beanName, mbd, instanceWrapper);
         if (exposedObject != null) {
             exposedObject = initializeBean(beanName, exposedObject, mbd);
@@ -444,7 +555,7 @@ protected BeanWrapper instantiateBean(final String beanName, final RootBeanDefin
             }, getAccessControlContext());
         }
         else {
-            // 实例化
+            // 实例化（见下面具体代码分析）
             beanInstance = getInstantiationStrategy().instantiate(mbd, beanName, parent);
         }
         // 实例化完成之后
@@ -536,3 +647,4 @@ public static <T> T instantiateClass(Constructor<T> ctor, Object... args) throws
     }
 }
 ```
+以上是bean的实例化过程。
