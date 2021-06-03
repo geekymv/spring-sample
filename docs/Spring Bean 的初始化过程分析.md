@@ -1,6 +1,7 @@
 ```java
 Person person = beanFactory.getBean("person", Person.class);
 ```
+在实例化bean阶段完成后，进入bean实例的初始化阶段
 
 AbstractAutowireCapableBeanFactory 类中的 doCreateBean方法
 ```java
@@ -21,6 +22,7 @@ AbstractAutowireCapableBeanFactory 类中的 doCreateBean方法
 protected Object doCreateBean(final String beanName, final RootBeanDefinition mbd, final Object[] args)
         throws BeanCreationException {
 
+    // 实例化bean阶段
     // Instantiate the bean.
     BeanWrapper instanceWrapper = null;
     if (mbd.isSingleton()) {
@@ -72,10 +74,10 @@ protected Object doCreateBean(final String beanName, final RootBeanDefinition mb
     // Initialize the bean instance.
     Object exposedObject = bean;
     try {
-        // 初始化bean
+        // 填充属性
         populateBean(beanName, mbd, instanceWrapper);
         if (exposedObject != null) {
-            // 见下面具体代码分析
+            // 初始化bean（见下面具体代码分析）
             exposedObject = initializeBean(beanName, exposedObject, mbd);
         }
     }
@@ -186,6 +188,7 @@ protected Object initializeBean(final String beanName, final Object bean, RootBe
         }, getAccessControlContext());
     }
     else {
+        // 调用 BeanNameAware、BeanClassLoaderAware、BeanFactoryAware 接口的实现方法
         invokeAwareMethods(beanName, bean);
     }
 
@@ -196,7 +199,7 @@ protected Object initializeBean(final String beanName, final Object bean, RootBe
     }
 
     try {
-        // 调用初始化方法
+        // 调用初始化方法（bean实现的InitializingBean接口的afterPropertiesSet方法和用户自定义的init-method方法）
         invokeInitMethods(beanName, wrappedBean, mbd);
     }
     catch (Throwable ex) {
@@ -205,6 +208,7 @@ protected Object initializeBean(final String beanName, final Object bean, RootBe
                 beanName, "Invocation of init method failed", ex);
     }
     if (mbd == null || !mbd.isSynthetic()) {
+        // 执行BeanPostProcessor 的 postProcessAfterInitialization 方法
         wrappedBean = applyBeanPostProcessorsAfterInitialization(wrappedBean, beanName);
     }
     return wrappedBean;
@@ -218,6 +222,20 @@ public Object applyBeanPostProcessorsBeforeInitialization(Object existingBean, S
     Object result = existingBean;
     for (BeanPostProcessor processor : getBeanPostProcessors()) {
         result = processor.postProcessBeforeInitialization(result, beanName);
+        if (result == null) {
+            return result;
+        }
+    }
+    return result;
+}
+
+@Override
+public Object applyBeanPostProcessorsAfterInitialization(Object existingBean, String beanName)
+        throws BeansException {
+
+    Object result = existingBean;
+    for (BeanPostProcessor processor : getBeanPostProcessors()) {
+        result = processor.postProcessAfterInitialization(result, beanName);
         if (result == null) {
             return result;
         }

@@ -150,6 +150,7 @@ protected <T> T doGetBean(
                             }
                         }
                     });
+                    // 返回bean实例本身或者FactoryBean的getObject创建的对象
                     bean = getObjectForBeanInstance(scopedInstance, name, beanName, mbd);
                 }
                 catch (IllegalStateException ex) {
@@ -280,7 +281,7 @@ public Object getSingleton(String beanName, ObjectFactory<?> singletonFactory) {
                 afterSingletonCreation(beanName);
             }
             if (newSingleton) {
-                // 单例bean实例创建成功，添加到缓存中
+                // 实例化和初始化都完成之后，单例bean实例添加到缓存中
                 addSingleton(beanName, singletonObject);
             }
         }
