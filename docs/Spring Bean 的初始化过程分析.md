@@ -62,6 +62,7 @@ protected Object doCreateBean(final String beanName, final RootBeanDefinition mb
                     "' to allow for resolving potential circular references");
         }
         // 此时bean实例（未初始化），将beanName添加到 DefaultSingletonBeanRegistry 中的 singletonFactories 、registeredSingletons成员变量中
+        // 初始化完成后，将单例bean实例addSingleton 添加到缓存，并移除singletonFactories中的beanName
         addSingletonFactory(beanName, new ObjectFactory<Object>() {
             @Override
             public Object getObject() throws BeansException {
@@ -157,6 +158,34 @@ protected void addSingletonFactory(String beanName, ObjectFactory<?> singletonFa
     }
 }
 ```
+
+提前访问bean实例的引用，用于解决循环引用问题
+```java
+/**
+ * Obtain a reference for early access to the specified bean,
+ * typically for the purpose of resolving a circular reference.
+ * @param beanName the name of the bean (for error handling purposes)
+ * @param mbd the merged bean definition for the bean
+ * @param bean the raw bean instance
+ * @return the object to expose as bean reference
+ */
+protected Object getEarlyBeanReference(String beanName, RootBeanDefinition mbd, Object bean) {
+    Object exposedObject = bean;
+    if (bean != null && !mbd.isSynthetic() && hasInstantiationAwareBeanPostProcessors()) {
+        for (BeanPostProcessor bp : getBeanPostProcessors()) {
+            if (bp instanceof SmartInstantiationAwareBeanPostProcessor) {
+                SmartInstantiationAwareBeanPostProcessor ibp = (SmartInstantiationAwareBeanPostProcessor) bp;
+                exposedObject = ibp.getEarlyBeanReference(exposedObject, beanName);
+                if (exposedObject == null) {
+                    return null;
+                }
+            }
+        }
+    }
+    return exposedObject;
+}
+```
+A依赖B，那么A实例化完成后初始化A实例的时候，会调用BeanFactory的getBean方法获取B实例，如果B实例还没有创建，则去创建B实例。
 
 
 ```java
