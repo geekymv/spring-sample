@@ -12,4 +12,8 @@
     <bean id="person" class="com.geekymv.spring.domain.Person">
     </bean>
 
+    <bean id="car" class="com.geekymv.spring.CarFactoryBean">
+        <property name="carInfo" value="白色,400,300000" />
+    </bean>
+
 </beans>
