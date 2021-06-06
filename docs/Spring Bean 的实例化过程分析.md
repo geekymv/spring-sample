@@ -2,7 +2,7 @@
 Person person = beanFactory.getBean("person", Person.class);
 ```
 
-AbstractBeanFactory 抽象工厂类
+AbstractBeanFactory 抽象工厂类中的getBean方法获取bean实例
 ```java
 @Override
 public <T> T getBean(String name, Class<T> requiredType) throws BeansException {
@@ -30,7 +30,7 @@ protected <T> T doGetBean(
     Object bean;
 
     // Eagerly check singleton cache for manually registered singletons.
-    // 从单例缓存（DefaultSingletonBeanRegistry的singletonObjects中）查找bean实例，第一次是获取不到的
+    // 先从单例缓存（DefaultSingletonBeanRegistry的singletonObjects中）查找bean实例，第一次是获取不到的
     Object sharedInstance = getSingleton(beanName);
     if (sharedInstance != null && args == null) {
         if (logger.isDebugEnabled()) {
@@ -72,7 +72,7 @@ protected <T> T doGetBean(
         }
 
         try {
-            // 从DefaultListableBeanFactory中获取BeanDefinition（见下面具体代码分析）
+            // 从DefaultListableBeanFactory中获取BeanDefinition（见下面具体代码分析），用于创建bean实例
             final RootBeanDefinition mbd = getMergedLocalBeanDefinition(beanName);
             checkMergedBeanDefinition(mbd, beanName, args);
 
