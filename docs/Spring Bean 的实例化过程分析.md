@@ -1,8 +1,12 @@
+
+经过前面几篇文章的分析我们终于完成了XML配置文件的解析，并将BeanDefinition加载到BeanFactory中了。
+我们首先看下DefaultListableBeanFactory bean工厂类的继承关系图
+
 ```java
 Person person = beanFactory.getBean("person", Person.class);
 ```
-
 AbstractBeanFactory 抽象工厂类中的getBean方法获取bean实例
+
 ```java
 @Override
 public <T> T getBean(String name, Class<T> requiredType) throws BeansException {
@@ -182,8 +186,7 @@ protected RootBeanDefinition getMergedLocalBeanDefinition(String beanName) throw
 }
 ```
 
-AbstractBeanFactory 抽象类中的 getBeanDefinition 抽象方法，由子类 DefaultListableBeanFactory 实现，从beanDefinitionMap 中获取BeanDefinition。
-（beanDefinitionMap 中BeanDefinition的是在Bean注册阶段存入的）
+AbstractBeanFactory 抽象类中的 getBeanDefinition 抽象方法，由子类 DefaultListableBeanFactory 实现，从beanDefinitionMap 中获取BeanDefinition。（beanDefinitionMap 中BeanDefinition的是在Bean注册阶段存入的）
 ```java
 @Override
 public BeanDefinition getBeanDefinition(String beanName) throws NoSuchBeanDefinitionException {
@@ -627,4 +630,6 @@ public static <T> T instantiateClass(Constructor<T> ctor, Object... args) throws
     }
 }
 ```
-以上是bean的实例化过程。通过反射机制使用bean的class属性来实例化bean。
+以上是bean的实例化过程，通过反射机制使用bean的class属性来实例化bean。
+
+>看Spring源码就像剥洋葱一样，一层一层嵌套，直到最底层的代码实现会看到熟悉的代码，有种豁然开朗的感觉，原来Spring的底层也是使用了这么简单的方法来实现的。
