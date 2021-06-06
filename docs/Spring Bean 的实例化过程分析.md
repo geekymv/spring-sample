@@ -30,7 +30,7 @@ protected <T> T doGetBean(
     Object bean;
 
     // Eagerly check singleton cache for manually registered singletons.
-    // 先从单例缓存（DefaultSingletonBeanRegistry的singletonObjects中）查找bean实例，第一次是获取不到的
+    // 先从单例缓存（DefaultSingletonBeanRegistry的singletonObjects中）或实例工厂（DefaultSingletonBeanRegistry 的 singletonFactories）中查找bean实例
     Object sharedInstance = getSingleton(beanName);
     if (sharedInstance != null && args == null) {
         if (logger.isDebugEnabled()) {
@@ -72,7 +72,7 @@ protected <T> T doGetBean(
         }
 
         try {
-            // 从DefaultListableBeanFactory中获取BeanDefinition（见下面具体代码分析），用于创建bean实例
+            // 从DefaultListableBeanFactory中获取RootBeanDefinition（见下面具体代码分析），用于创建bean实例
             final RootBeanDefinition mbd = getMergedLocalBeanDefinition(beanName);
             checkMergedBeanDefinition(mbd, beanName, args);
 
@@ -102,7 +102,7 @@ protected <T> T doGetBean(
                     @Override
                     public Object getObject() throws BeansException {
                         try {
-                            // ObjectFactory 对象工厂创建bean
+                            // ObjectFactory 对象工厂创建bean，调用实现类AbstractAutowireCapableBeanFactory中的createBean方法创建bean实例（见下面具体代码分析）
                             return createBean(beanName, mbd, args);
                         }
                         catch (BeansException ex) {
@@ -114,6 +114,9 @@ protected <T> T doGetBean(
                         }
                     }
                 });
+                
+                // 返回bean实例本身或者FactoryBean的getObject创建的对象
+                // 判断当前bean是否是FactoryBean类型的bean，如果是，那么需要调用该bean对应的FactoryBean的getObject作为返回值
                 bean = getObjectForBeanInstance(sharedInstance, name, beanName, mbd);
             }
 
@@ -131,34 +134,7 @@ protected <T> T doGetBean(
             }
 
             else {
-                String scopeName = mbd.getScope();
-                final Scope scope = this.scopes.get(scopeName);
-                if (scope == null) {
-                    throw new IllegalStateException("No Scope registered for scope name '" + scopeName + "'");
-                }
-                try {
-                    Object scopedInstance = scope.get(beanName, new ObjectFactory<Object>() {
-                        @Override
-                        public Object getObject() throws BeansException {
-                            beforePrototypeCreation(beanName);
-                            try {
-                                // 调用实现类AbstractAutowireCapableBeanFactory中的createBean方法创建bean实例（见下面具体代码分析）
-                                return createBean(beanName, mbd, args);
-                            }
-                            finally {
-                                afterPrototypeCreation(beanName);
-                            }
-                        }
-                    });
-                    // 返回bean实例本身或者FactoryBean的getObject创建的对象
-                    bean = getObjectForBeanInstance(scopedInstance, name, beanName, mbd);
-                }
-                catch (IllegalStateException ex) {
-                    throw new BeanCreationException(beanName,
-                            "Scope '" + scopeName + "' is not active for the current thread; consider " +
-                            "defining a scoped proxy for this bean if you intend to refer to it from a singleton",
-                            ex);
-                }
+                // 省略部分代码...
             }
         }
         catch (BeansException ex) {
@@ -167,6 +143,7 @@ protected <T> T doGetBean(
         }
     }
 
+    // 类型转换
     // Check if required type matches the type of the actual bean instance.
     if (requiredType != null && bean != null && !requiredType.isInstance(bean)) {
         try {
@@ -290,8 +267,7 @@ public Object getSingleton(String beanName, ObjectFactory<?> singletonFactory) {
 }
 ```
 
-
-AbstractAutowireCapableBeanFactory 类中的 createBean 方法创建bean实例
+下面回到ObjectFactory 的getObject方法，对象工厂创建单例bean的部分代码，调用了AbstractAutowireCapableBeanFactory 类中的 createBean 方法创建bean实例
 
 ```java
 //---------------------------------------------------------------------
@@ -398,7 +374,8 @@ protected Object doCreateBean(final String beanName, final RootBeanDefinition mb
         }
     }
 
-    // 解决bean循环引用
+    // 解决bean循环引用，不等bean创建完成（实例化完成还未初始化），将创建bean的ObjectFactory 放入缓存中，
+    // 若是有其他bean创建的时候需要引用这个bean，则从singletonFactories中根据beanName获取ObjectFactory
     // Eagerly cache singletons to be able to resolve circular references
     // even when triggered by lifecycle interfaces like BeanFactoryAware.
     boolean earlySingletonExposure = (mbd.isSingleton() && this.allowCircularReferences &&
@@ -417,12 +394,14 @@ protected Object doCreateBean(final String beanName, final RootBeanDefinition mb
         });
     }
 
+    // // 初始化bean
     // Initialize the bean instance.
     Object exposedObject = bean;
     try {
-        // 初始化bean
+        // bean属性注入
         populateBean(beanName, mbd, instanceWrapper);
         if (exposedObject != null) {
+            // 调用初始化方法，比如init-method
             exposedObject = initializeBean(beanName, exposedObject, mbd);
         }
     }
@@ -559,7 +538,7 @@ protected BeanWrapper instantiateBean(final String beanName, final RootBeanDefin
             // 实例化（见下面具体代码分析）
             beanInstance = getInstantiationStrategy().instantiate(mbd, beanName, parent);
         }
-        // 实例化完成之后
+        // 实例化完成之后，将bean实例包装成BeanWrapper
         BeanWrapper bw = new BeanWrapperImpl(beanInstance);
         initBeanWrapper(bw);
         return bw;
@@ -648,4 +627,4 @@ public static <T> T instantiateClass(Constructor<T> ctor, Object... args) throws
     }
 }
 ```
-以上是bean的实例化过程。
+以上是bean的实例化过程。通过反射机制使用bean的class属性来实例化bean。
