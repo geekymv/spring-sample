@@ -1,5 +1,6 @@
 package com.geekymv.spring;
 
+import com.geekymv.spring.domain.Car;
 import com.geekymv.spring.domain.Person;
 import com.geekymv.spring.domain.User;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
@@ -28,10 +29,10 @@ public class SpringApplication {
 //        System.out.println(user.getId() + ", " + user.getName());
 
 
-        Person person = beanFactory.getBean("person", Person.class);
-
-        System.out.println(person);
-
+//        Person person = beanFactory.getBean("person", Person.class);
+//        System.out.println(person);
+        Car car = beanFactory.getBean("car", Car.class);
+        System.out.println(car);
     }
 
 }
