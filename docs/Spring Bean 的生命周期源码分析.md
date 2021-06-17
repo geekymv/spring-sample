@@ -1,3 +1,32 @@
+面试中经常会被问到Spring中Bean的生命周期问题，一般我们可能会在面试之前背背面试题然后给面试官说说。
+那么Spring中如何定义Spring Bean的生命周期的呢？其实BeanFactory接口注释中已经明确说明了Spring Bean的生命周期。
+
+Bean factory implementations should support the standard bean lifecycle interfaces as far as possible. The full set of initialization methods and their standard order is:
+1.BeanNameAware's setBeanName
+2.BeanClassLoaderAware's setBeanClassLoader
+3.BeanFactoryAware's setBeanFactory
+4.EnvironmentAware's setEnvironment
+5.EmbeddedValueResolverAware's setEmbeddedValueResolver
+6.ResourceLoaderAware's setResourceLoader (only applicable when running in an application context)
+7.ApplicationEventPublisherAware's setApplicationEventPublisher (only applicable when running in an application context)
+8.MessageSourceAware's setMessageSource (only applicable when running in an application context)
+9.ApplicationContextAware's setApplicationContext (only applicable when running in an application context)
+10.ServletContextAware's setServletContext (only applicable when running in a web application context)
+上面10个都是XxxAware接口
+
+11.postProcessBeforeInitialization methods of BeanPostProcessors
+12.InitializingBean's afterPropertiesSet
+13.a custom init-method definition
+14.postProcessAfterInitialization methods of BeanPostProcessors
+
+
+On shutdown of a bean factory, the following lifecycle methods apply:
+1.postProcessBeforeDestruction methods of DestructionAwareBeanPostProcessors
+2.DisposableBean's destroy
+3.a custom destroy-method definition
+
+
+AbstractAutowireCapableBeanFactory 类
 ```java
 /**
  * Actually create the specified bean. Pre-creation processing has already happened
