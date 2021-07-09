@@ -6,10 +6,7 @@ public class SpringAnnotationApplication {
 
     public static void main(String[] args) {
 
-        AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
-
-        ctx.register(AppConfig.class);
-        ctx.refresh();
+        AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(AppConfig.class);
 
         MyBean bean = ctx.getBean(MyBean.class);
         System.out.println(bean.getName());

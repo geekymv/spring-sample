@@ -25,6 +25,7 @@ On shutdown of a bean factory, the following lifecycle methods apply:
 2.DisposableBean's destroy
 3.a custom destroy-method definition
 
+下面我们回到源码层面看看Spring Bean生命周期实现过程
 
 AbstractAutowireCapableBeanFactory 类
 ```java
@@ -103,32 +104,7 @@ protected Object doCreateBean(final String beanName, final RootBeanDefinition mb
         }
     }
 
-    if (earlySingletonExposure) {
-        Object earlySingletonReference = getSingleton(beanName, false);
-        if (earlySingletonReference != null) {
-            if (exposedObject == bean) {
-                exposedObject = earlySingletonReference;
-            }
-            else if (!this.allowRawInjectionDespiteWrapping && hasDependentBean(beanName)) {
-                String[] dependentBeans = getDependentBeans(beanName);
-                Set<String> actualDependentBeans = new LinkedHashSet<>(dependentBeans.length);
-                for (String dependentBean : dependentBeans) {
-                    if (!removeSingletonIfCreatedForTypeCheckOnly(dependentBean)) {
-                        actualDependentBeans.add(dependentBean);
-                    }
-                }
-                if (!actualDependentBeans.isEmpty()) {
-                    throw new BeanCurrentlyInCreationException(beanName,
-                            "Bean with name '" + beanName + "' has been injected into other beans [" +
-                            StringUtils.collectionToCommaDelimitedString(actualDependentBeans) +
-                            "] in its raw version as part of a circular reference, but has eventually been " +
-                            "wrapped. This means that said other beans do not use the final version of the " +
-                            "bean. This is often the result of over-eager type matching - consider using " +
-                            "'getBeanNamesOfType' with the 'allowEagerInit' flag turned off, for example.");
-                }
-            }
-        }
-    }
+    // 省略部分代码...
 
     // Register bean as disposable.
     try {
