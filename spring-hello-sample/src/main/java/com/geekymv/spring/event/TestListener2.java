@@ -7,6 +7,6 @@ public class TestListener2 implements ApplicationListener {
 
     @Override
     public void onApplicationEvent(ApplicationEvent event) {
-        System.out.println("hello world" + event.getSource());
+        System.out.println("hello world, " + event.getSource());
     }
 }

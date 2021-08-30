@@ -20,6 +20,13 @@ import java.lang.reflect.Method;
  * registerListeners();
  * 注册监听器
  *
+ * 获取泛型类型
+ * SerializableTypeWrapper.forGenericInterfaces
+ * ParameterizedType
+ * ResolvableType.resolveVariable
+ *
+ * Class.isAssignableFrom
+ *
  */
 public class TestApplicationListener {
 
@@ -27,7 +34,7 @@ public class TestApplicationListener {
 
         ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext("event.xml");
 
-        try {
+        /*try {
             Method method = getDeclaredMethod(context, "getApplicationEventMulticaster");
             method.setAccessible(true);
             ApplicationEventMulticaster multicaster = (ApplicationEventMulticaster)method.invoke(context);
@@ -35,10 +42,10 @@ public class TestApplicationListener {
 
         } catch (Exception e) {
             e.printStackTrace();
-        }
+        }*/
 
 
-        context.publishEvent(new TestEvent("event", "msg"));
+//        context.publishEvent(new TestEvent("event", "msg"));
 
         // BeanFactory 是ApplicationContext的一个属性（AbstractRefreshableApplicationContext）
        /* ConfigurableListableBeanFactory beanFactory = context.getBeanFactory();
