@@ -9,6 +9,8 @@ public class ApplicationContextSample {
 
         ApplicationContext context = new ClassPathXmlApplicationContext("applicationContext.xml");
 
+//        Object user = context.getBean("user");
+//        System.out.println(user);
     }
 
 }

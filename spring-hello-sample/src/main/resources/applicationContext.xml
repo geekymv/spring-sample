@@ -10,6 +10,7 @@
     <bean id="user" name="u1,;u1" class="com.geekymv.spring.domain.User">
         <property name="id" value="1" />
         <property name="name" value="tom" />
+        <property name="birthday" value=""/>
     </bean>
 
     <!--<dubbo:registry address="zookeeper://127.0.0.1:2181"/>-->

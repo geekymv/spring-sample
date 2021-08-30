@@ -1,10 +1,14 @@
 package com.geekymv.spring.domain;
 
+import java.util.Date;
+
 public class User {
 
     private Long id;
 
     private String name;
+
+    private Date birthday;
 
     public Long getId() {
         return id;
@@ -20,5 +24,13 @@ public class User {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public Date getBirthday() {
+        return birthday;
+    }
+
+    public void setBirthday(Date birthday) {
+        this.birthday = birthday;
     }
 }
